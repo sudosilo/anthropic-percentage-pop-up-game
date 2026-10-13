@@ -1,75 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
 <title>Anthropic Percentage Pop-up Game</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&family=Inter+Tight:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: typing test card up top, usage-limit banners slam in over the input and lock it until closed. Light only. */
+/* Layout: compact stats, then the typing zone. Banners land on top of the input and the line you were on. Dark only. */
 :root{
-  --bg:#faf9f5; --paper:#ffffff; --ink:#1f1e1d; --muted:#73726c;
-  --line:#e6e3da; --accent:#c96442; --pill:#f0eee6; --ok:#3d7a4f; --bad:#b4442e;
+  --bg:#1a1a19; --panel:#232321; --ink:#f2f1ec; --muted:#a3a29b;
+  --line:#34332f; --accent:#d97757; --pill:#3a3935; --banner:#2b2b29;
+  --ok:#8cc29b; --bad:#f09a85; --badbg:#4a2a22;
   --serif:"Source Serif 4",Georgia,serif;
   --sans:"Inter Tight",system-ui,sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,monospace;
-  color-scheme:light;
+  color-scheme:dark;
 }
 *{box-sizing:border-box}
-html,body{height:100%}
-body{background:var(--bg);color:var(--ink);font-family:var(--sans);padding-inline:16px}
-.wrap{max-width:620px;margin:0 auto;padding-block:20px 40px;display:flex;flex-direction:column;gap:16px}
-h1{font-family:var(--serif);font-weight:600;font-size:2rem;margin:0;text-wrap:balance}
-.sub{color:var(--muted);margin:0;font-size:.95rem;line-height:1.5}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.stat{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:2px;min-width:0}
-.stat b{font-family:var(--mono);font-size:1.25rem;font-weight:500;font-variant-numeric:tabular-nums}
-.stat span{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
-.passage{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:18px;font-family:var(--serif);font-size:1.2rem;line-height:1.7;min-width:0;overflow-wrap:anywhere}
-.passage .c{color:var(--ok)} .passage .w{color:var(--bad);background:#f6dcd4;border-radius:2px}
-.passage .cur{border-left:2px solid var(--accent);margin-left:-1px}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);padding-inline:16px;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.wrap{max-width:620px;margin:0 auto;padding-block:14px 40px;display:flex;flex-direction:column;gap:12px}
+h1{font-family:var(--serif);font-weight:600;font-size:1.45rem;line-height:1.2;margin:0;text-wrap:balance}
+.sub{color:var(--muted);margin:0;font-size:.88rem;line-height:1.45}
+.fine{font-size:.74rem}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:1px;min-width:0}
+.stat b{font-family:var(--mono);font-size:1.05rem;font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}
+.stat span{font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.zone{position:relative;display:flex;flex-direction:column;gap:8px}
+.passage{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px;font-family:var(--serif);font-size:1.12rem;line-height:1.6;height:8.6em;overflow:hidden;overflow-wrap:anywhere}
+.passage .c{color:var(--ok)}
+.passage .w{color:var(--bad);background:var(--badbg);border-radius:2px}
+.passage .cur{box-shadow:inset 2px 0 0 var(--accent)}
 .passage .todo{color:var(--muted)}
-#type{width:100%;font:inherit;font-family:var(--mono);font-size:1rem;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--paper);color:var(--ink)}
+#type{width:100%;font-family:var(--mono);font-size:16px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--ink)}
 #type:focus{outline:2px solid var(--accent);outline-offset:1px}
-#type:disabled{background:var(--pill);color:var(--muted)}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:999px;padding:10px 16px;font-weight:600}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:999px;padding:10px 16px;font-weight:600;-webkit-tap-highlight-color:transparent}
 button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.result{font-family:var(--serif);font-size:1.1rem;line-height:1.5}
-.shade{position:fixed;inset:0;background:rgba(31,30,29,.18);display:none;z-index:5}
-.shade.on{display:block}
-.stack{position:fixed;left:0;right:0;bottom:0;padding:0 12px calc(12px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column-reverse;gap:8px;z-index:6;max-height:80vh;overflow:hidden;pointer-events:none}
-.toast{pointer-events:auto;max-width:620px;width:100%;margin:0 auto;background:var(--paper);border:1px solid var(--line);border-radius:24px;padding:16px 14px 16px 20px;display:flex;align-items:center;gap:12px;box-shadow:0 8px 28px rgba(31,30,29,.14);animation:pop .3s ease-out}
+.result{font-family:var(--serif);font-size:1.05rem;line-height:1.5;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+.stack{position:absolute;left:-6px;right:-6px;bottom:-6px;display:flex;flex-direction:column-reverse;gap:6px;z-index:6;pointer-events:none}
+.toast{pointer-events:auto;width:100%;background:var(--banner);border:1px solid var(--line);border-radius:22px;padding:14px 10px 14px 18px;display:flex;align-items:center;gap:10px;box-shadow:0 10px 30px rgba(0,0,0,.45);animation:pop .25s ease-out}
 .toast .txt{flex:1;min-width:0}
-.toast .t{font-weight:600;font-size:1.02rem;line-height:1.3}
-.toast .s{font-size:.84rem;color:var(--muted);margin-top:4px}
-.toast .v{background:var(--pill);border:0;padding:10px 16px;font-size:.88rem;white-space:nowrap}
-.toast .x{border:0;background:none;font-size:1.4rem;padding:6px 10px;color:var(--muted)}
-@keyframes pop{from{transform:translateY(24px);opacity:.3}to{transform:none;opacity:1}}
+.toast .t{font-weight:600;font-size:1rem;line-height:1.3}
+.toast .s{font-size:.82rem;color:var(--muted);margin-top:4px}
+.toast .v{background:var(--pill);border:0;padding:10px 14px;font-size:.88rem;white-space:nowrap}
+.toast .x{border:0;background:none;font-size:1.5rem;line-height:1;padding:8px 10px;color:var(--muted)}
+@keyframes pop{from{transform:translateY(16px);opacity:.3}to{transform:none;opacity:1}}
 @media (prefers-reduced-motion:reduce){.toast{animation:none}}
-@media (max-width:420px){.stats{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:420px){.toast .v{padding:9px 11px;font-size:.8rem}.toast .t{font-size:.95rem}}
 </style>
-
+</head>
+<body>
 <div class="wrap">
   <h1>Anthropic Percentage Pop-up Game</h1>
-  <p class="sub">60 second typing test. Every few seconds a usage banner locks the keyboard. Close it to keep typing. The clock keeps running. See how much of your attention survives.</p>
-  <p class="sub" style="font-size:.78rem">A fan-made protest game about pop-up messages. Not made by or affiliated with Anthropic.</p>
+  <p class="sub">60 second typing test. Type it or use voice-to-text. A usage banner lands right where you're typing, and anything you type or dictate while it's up goes nowhere. The clock keeps running.</p>
   <div class="stats">
     <div class="stat"><b id="wpm">0</b><span>WPM</span></div>
     <div class="stat"><b id="acc">100%</b><span>Accuracy</span></div>
-    <div class="stat"><b id="time">60.0</b><span>Seconds left</span></div>
-    <div class="stat"><b id="lost">0.0s</b><span>Lost to pop-ups</span></div>
+    <div class="stat"><b id="time">60.0</b><span>Seconds</span></div>
+    <div class="stat"><b id="usage">85%</b><span>Weekly limit</span></div>
   </div>
-  <div class="passage" id="passage" aria-live="off"></div>
-  <input id="type" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Start typing to begin">
+  <div class="zone" id="zone">
+    <div class="passage" id="passage"></div>
+    <input id="type" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Start typing or talking">
+    <div class="stack" id="stack"></div>
+  </div>
   <div class="row">
     <button id="restart">Restart</button>
     <span class="sub" id="count">0 pop-ups served</span>
   </div>
   <div class="result" id="result" hidden></div>
+  <p class="sub fine">A fan-made protest game about pop-up messages. Not made by or affiliated with Anthropic.</p>
 </div>
-<div class="shade" id="shade"></div>
-<div class="stack" id="stack"></div>
 
 <script>
 var TEXT="You sat down to do one thing. A banner slid up to tell you a number you did not ask for. You closed it and lost the sentence you were holding. For a neurodivergent brain every pop-up is a small act of violence against focus, and climbing back into the work takes far longer than tapping the X. Ninety percent of a good morning can vanish this way, one percentage at a time. People who would have been perfectly happy end up drained and furious at a screen they pay for. Software should wait to be asked. Put the meter in settings, give people a toggle, and let them work. ";
 TEXT=TEXT+TEXT;
-var LEN=60, started=0, ended=false, typed="", served=0, blockedAt=0, lost=0, timer=null, nagT=null, battery=87;
+var LEN=60,started=0,ended=false,typed="",served=0,blockedAt=0,lost=0,eaten=0,timer=null,nagT=null,usage=85,battery=27;
 var $=function(id){return document.getElementById(id)};
 var inp=$("type");
 
@@ -77,106 +85,107 @@ function rnd(a,b){return a+Math.random()*(b-a)}
 function pct(n){return n.toFixed(n<1?4:2)+"%"}
 function now(){return new Date()}
 function dayPct(){var d=now();return (d.getHours()*3600+d.getMinutes()*60+d.getSeconds())/864}
-function yearPct(){var d=now(),s=new Date(d.getFullYear(),0,1),e=new Date(d.getFullYear()+1,0,1);return (d-s)/(e-s)*100}
 function elapsed(){return started?Math.min(LEN,(Date.now()-started)/1000):0}
+function blocked(){return $("stack").children.length>0}
+function usageMsg(){
+  if(usage>=100)return ["You've reached your weekly limit","Resets Thursday at 5:00 PM"];
+  return ["You've used "+usage+"% of your weekly limit","Resets Thursday at 5:00 PM"];
+}
 
 var nags=[
- function(){return ["You've used 85% of your weekly limit","Resets Thursday at 5:00 PM"]},
- function(){return ["You've used "+(85+served%15)+"% of your weekly limit","Resets Thursday at 5:00 PM"]},
+ usageMsg, usageMsg, usageMsg,
  function(){return ["You've used "+pct(elapsed()/LEN*100)+" of this typing test","Resets when you press Restart"]},
  function(){return ["You've typed "+typed.length+" characters","That's "+pct(typed.length/TEXT.length*100)+" of the passage."]},
- function(){return ["You've used "+(typed.split(" ").length*3)+"% of your weekly words","Resets Thursday at 5:00 PM"]},
- function(){return ["Your keyboard is "+rnd(1,100).toFixed(0)+"% available","Close this to raise it to 100%."]},
- function(){battery-=0.001;return ["Your battery dropped by 0.0010%","It is now "+battery.toFixed(3)+"%."]},
+ function(){return ["Your keyboard is 0% available","Close this to raise it to 100%."]},
+ function(){return ["Voice-to-text is 0% listening","Everything you just said went nowhere."]},
+ function(){return [eaten+" characters went nowhere","That's what you typed or said while a banner was up."]},
+ function(){battery-=0.001;return ["Battery dropped by 0.0010%","It is now "+battery.toFixed(3)+"%."]},
  function(){return ["You've used "+pct(dayPct())+" of today","Resets at midnight"]},
- function(){return ["You've used "+pct(yearPct())+" of "+now().getFullYear(),"Resets January 1"]},
- function(){return ["Typing speed is "+pct(rnd(40,90))+" of what it would be without pop-ups","Estimate provided by a pop-up."]},
- function(){return ["You've lost "+lost.toFixed(1)+" seconds to pop-ups","That's "+pct(lost/LEN*100)+" of your test."]},
+ function(){return ["You've lost "+curLost().toFixed(1)+" seconds to pop-ups","That's "+pct(curLost()/LEN*100)+" of your test."]},
  function(){return ["Accuracy is "+$("acc").textContent,"This banner is 0% accurate about whether you wanted it."]},
- function(){return ["Screen brightness is "+rnd(40,90).toFixed(1)+"%","You did not ask."]},
  function(){return ["Cell signal is "+rnd(10,99).toFixed(1)+"% of a bar","5G is "+rnd(1,40).toFixed(0)+"% of 5G."]},
- function(){return ["Phone tilt is "+rnd(0,100).toFixed(2)+"% of upright","Please type "+rnd(1,9).toFixed(1)+"% straighter."]},
- function(){return ["Media volume is "+rnd(0,100).toFixed(0)+"%","The phone is on silent."]},
  function(){return ["Thumb fatigue is at "+rnd(60,99).toFixed(1)+"%","Caused by closing banners."]},
- function(){return ["You've closed "+Math.min(100,served*4)+"% of pop-ups","The rest are on their way."]},
- function(){return ["Your weekly limit is 85% of 85%","Which is 72.25%."]},
+ function(){return ["Where were you?","You were "+pct(typed.length/TEXT.length*100)+" through. Good luck finding it."]},
  function(){return ["Confidence that you wanted this: 0.00%","Shown anyway."]},
- function(){return ["This banner is "+pct(rnd(50,100))+" loaded","The rest will load as another banner."]},
- function(){return ["Thursday is still "+Math.max(0,4-now().getDay())+" days away","Resets Thursday at 5:00 PM"]},
- function(){return ["Your words per minute are "+$("wpm").textContent+"","That's "+pct(rnd(1,30))+" of a court stenographer."]},
- function(){return ["Spacebar usage: "+pct(rnd(10,25)),"Other keys are also available."]},
- function(){return ["Dark mode is 0% enabled","Good."]}
+ function(){return ["Your words per minute are "+$("wpm").textContent,"Down "+pct(rnd(5,40))+" since the last banner."]}
 ];
 
 function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e}
-function block(){if(!blockedAt)blockedAt=Date.now();inp.disabled=true;inp.blur();$("shade").classList.add("on")}
-function unblockIfClear(){
-  if($("stack").children.length)return;
-  if(blockedAt){lost+=(Date.now()-blockedAt)/1000;blockedAt=0}
-  $("shade").classList.remove("on");
-  if(!ended){inp.disabled=false;inp.focus()}
-}
-function nag(){
+function curLost(){return lost+(blockedAt?(Date.now()-blockedAt)/1000:0)}
+function keepFocus(b){b.addEventListener("pointerdown",function(e){e.preventDefault()});b.addEventListener("mousedown",function(e){e.preventDefault()})}
+function nag(msg){
   if(ended)return;
-  var n=nags[Math.floor(Math.random()*nags.length)]();
+  var n=msg||nags[Math.floor(Math.random()*nags.length)]();
   var box=el("div","toast"),txt=el("div","txt");
   txt.appendChild(el("div","t",n[0]));txt.appendChild(el("div","s",n[1]));
   var v=el("button","v","View usage"),x=el("button","x","×");
   x.setAttribute("aria-label","Dismiss");
-  v.onclick=function(){nag();nag()};
-  x.onclick=function(){box.remove();unblockIfClear()};
+  keepFocus(v);keepFocus(x);
+  v.onclick=function(){nag(usageMsg());nag()};
+  x.onclick=function(){
+    box.remove();
+    if(!blocked()&&blockedAt){lost+=(Date.now()-blockedAt)/1000;blockedAt=0}
+    if(!ended)inp.focus();
+  };
   box.appendChild(txt);box.appendChild(v);box.appendChild(x);
   var st=$("stack");st.insertBefore(box,st.firstChild);
-  while(st.children.length>8)st.removeChild(st.lastChild);
+  while(st.children.length>5)st.removeChild(st.lastChild);
+  if(!blockedAt)blockedAt=Date.now();
   served++;$("count").textContent=served+" pop-ups served";
-  block();
 }
 function scheduleNag(){
   clearTimeout(nagT);
   nagT=setTimeout(function(){
     if(ended)return;
-    nag(); if(Math.random()<.3)nag();
+    nag();if(Math.random()<.3)nag();
     scheduleNag();
   },rnd(3000,7000));
 }
+function bumpUsage(){
+  var target=Math.min(100,85+Math.floor(typed.length/30)+Math.floor(elapsed()/10));
+  if(target>usage){usage=target;$("usage").textContent=usage+"%";nag(usageMsg())}
+}
 function render(){
   var p=$("passage");p.textContent="";
-  var show=Math.max(typed.length+120,200);
-  for(var i=0;i<Math.min(show,TEXT.length);i++){
-    var s=el("span");
-    s.textContent=TEXT[i];
+  var from=Math.max(0,typed.length-140),to=Math.min(TEXT.length,typed.length+220),cur=null;
+  for(var i=from;i<to;i++){
+    var s=el("span");s.textContent=TEXT[i];
     if(i<typed.length)s.className=typed[i]===TEXT[i]?"c":"w";
-    else s.className="todo"+(i===typed.length?" cur":"");
+    else{s.className="todo";if(i===typed.length){s.className+=" cur";cur=s}}
     p.appendChild(s);
   }
+  if(cur)p.scrollTop=Math.max(0,cur.offsetTop-p.clientHeight*0.55);
 }
 function stats(){
-  var t=elapsed(), right=0;
+  var t=elapsed(),right=0;
   for(var i=0;i<typed.length;i++)if(typed[i]===TEXT[i])right++;
   var wpm=t>0?Math.round((right/5)/(t/60)):0;
   var acc=typed.length?Math.round(right/typed.length*100):100;
-  var curLost=lost+(blockedAt?(Date.now()-blockedAt)/1000:0);
-  $("wpm").textContent=wpm;$("acc").textContent=acc+"%";
-  $("time").textContent=(LEN-t).toFixed(1);$("lost").textContent=curLost.toFixed(1)+"s";
-  if(started&&t>=LEN&&!ended)finish(wpm,acc,curLost);
+  $("wpm").textContent=wpm;$("acc").textContent=acc+"%";$("time").textContent=(LEN-t).toFixed(1);
+  if(started&&!ended)bumpUsage();
+  if(started&&t>=LEN&&!ended)finish(wpm,acc);
 }
-function finish(wpm,acc,curLost){
-  ended=true;clearTimeout(nagT);inp.disabled=true;
-  $("stack").textContent="";$("shade").classList.remove("on");
+function finish(wpm,acc){
+  ended=true;clearTimeout(nagT);clearInterval(timer);
+  var cl=curLost();
+  $("stack").textContent="";inp.blur();
   var r=$("result");r.hidden=false;
-  r.textContent="Final: "+wpm+" WPM at "+acc+"% accuracy. "+curLost.toFixed(1)+" of 60 seconds ("+Math.round(curLost/LEN*100)+"%) went to closing "+served+" pop-ups.";
+  r.textContent="Final: "+wpm+" WPM at "+acc+"% accuracy. "+cl.toFixed(1)+" of 60 seconds ("+Math.round(cl/LEN*100)+"%) went to closing "+served+" pop-ups, and "+eaten+" characters you typed or dictated went nowhere. Weekly limit used: "+usage+"%.";
 }
 inp.addEventListener("input",function(){
-  if(ended)return;
+  if(ended){inp.value=typed;return}
+  if(blocked()){eaten+=Math.max(0,inp.value.length-typed.length);inp.value=typed;return}
   if(!started){started=Date.now();timer=setInterval(stats,100);scheduleNag()}
   typed=inp.value.slice(0,TEXT.length);render();stats();
 });
 $("restart").onclick=function(){
   clearInterval(timer);clearTimeout(nagT);
-  started=0;ended=false;typed="";served=0;blockedAt=0;lost=0;
-  inp.value="";inp.disabled=false;$("stack").textContent="";$("shade").classList.remove("on");
+  started=0;ended=false;typed="";served=0;blockedAt=0;lost=0;eaten=0;usage=85;
+  inp.value="";$("stack").textContent="";$("usage").textContent="85%";
   $("result").hidden=true;$("count").textContent="0 pop-ups served";
   render();stats();inp.focus();
 };
 render();stats();
 </script>
+</body>
+</html>
