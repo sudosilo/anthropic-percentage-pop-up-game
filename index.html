@@ -38,7 +38,7 @@ h1{font-family:var(--serif);font-weight:600;font-size:1.45rem;line-height:1.2;ma
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:999px;padding:10px 16px;font-weight:600;-webkit-tap-highlight-color:transparent}
 button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.result{font-family:var(--serif);font-size:1.05rem;line-height:1.5;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+.result{position:relative;font-family:var(--serif);font-size:1.05rem;line-height:1.5;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;min-height:9em}
 .stack{position:absolute;left:-6px;right:-6px;bottom:-6px;display:flex;flex-direction:column-reverse;gap:6px;z-index:6;pointer-events:none}
 .toast{pointer-events:auto;width:100%;background:var(--banner);border:1px solid var(--line);border-radius:22px;padding:14px 10px 14px 18px;display:flex;align-items:center;gap:10px;box-shadow:0 10px 30px rgba(0,0,0,.45);animation:pop .25s ease-out}
 .toast .txt{flex:1;min-width:0}
@@ -70,14 +70,14 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
     <button id="restart">Restart</button>
     <span class="sub" id="count">0 pop-ups served</span>
   </div>
-  <div class="result" id="result" hidden></div>
+  <div class="result" id="result" hidden><span id="rtext"></span></div>
   <p class="sub fine">A fan-made protest game about pop-up messages. Not made by or affiliated with Anthropic.</p>
 </div>
 
 <script>
 var TEXT="You sat down to do one thing. A banner slid up to tell you a number you did not ask for. You closed it and lost the sentence you were holding. For a neurodivergent brain every pop-up is a small act of violence against focus, and climbing back into the work takes far longer than tapping the X. Ninety percent of a good morning can vanish this way, one percentage at a time. People who would have been perfectly happy end up drained and furious at a screen they pay for. Software should wait to be asked. Put the meter in settings, give people a toggle, and let them work. ";
 TEXT=TEXT+TEXT;
-var opened=Date.now(),LEN=60,started=0,ended=false,typed="",served=0,blockedAt=0,lost=0,eaten=0,timer=null,nagT=null,usage=85,battery=27;
+var finalTxt="",finalWpm=0,opened=Date.now(),LEN=60,started=0,ended=false,typed="",served=0,blockedAt=0,lost=0,eaten=0,timer=null,nagT=null,usage=85,battery=27;
 var $=function(id){return document.getElementById(id)};
 var inp=$("type");
 
@@ -92,6 +92,15 @@ function usageMsg(){
   return ["You've used "+usage+"% of your weekly limit","Resets Thursday at 5:00 PM"];
 }
 
+var resultNags=[
+ function(){return ["Your score is ready","It is "+pct(rnd(10,60))+" visible behind this banner."]},
+ function(){return ["You've read "+pct(rnd(0,30))+" of your results","Resets when the next banner lands"]},
+ function(){return ["Your final WPM was "+finalWpm,"Here it is again in case you missed it under the last one."]},
+ function(){return ["Results are "+pct(rnd(1,40))+" legible","Tap X to raise legibility briefly."]},
+ function(){return ["Want to share your score?","You'll need to read it first. Good luck."]},
+ function(){return ["The test is over","The pop-ups are not."]},
+ function(){return ["You've used 100% of this test","Pop-ups are unlimited."]}
+];
 var nags=[
  usageMsg, usageMsg, usageMsg,
  function(){return ["You've used "+pct(elapsed()/LEN*100)+" of this typing test","Resets when you press Restart"]},
@@ -114,8 +123,8 @@ function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cl
 function curLost(){return lost+(blockedAt?(Date.now()-blockedAt)/1000:0)}
 function keepFocus(b){b.addEventListener("pointerdown",function(e){e.preventDefault()});b.addEventListener("mousedown",function(e){e.preventDefault()})}
 function nag(msg){
-  if(ended)return;
-  var n=msg||nags[Math.floor(Math.random()*nags.length)]();
+  var pool=ended&&Math.random()<.6?resultNags:nags;
+  var n=msg||pool[Math.floor(Math.random()*pool.length)]();
   var box=el("div","toast"),txt=el("div","txt");
   txt.appendChild(el("div","t",n[0]));txt.appendChild(el("div","s",n[1]));
   var v=el("button","v","View usage"),x=el("button","x","×");
@@ -136,7 +145,6 @@ function nag(msg){
 function scheduleNag(){
   clearTimeout(nagT);
   nagT=setTimeout(function(){
-    if(ended)return;
     nag();if(Math.random()<.35)nag();
     scheduleNag();
   },rnd(2000,5000));
@@ -165,11 +173,13 @@ function stats(){
   if(started&&t>=LEN&&!ended)finish(wpm,acc);
 }
 function finish(wpm,acc){
-  ended=true;clearTimeout(nagT);clearInterval(timer);
+  ended=true;clearInterval(timer);finalWpm=wpm;
   var cl=curLost();
-  $("stack").textContent="";inp.blur();
-  var r=$("result");r.hidden=false;
-  r.textContent="Final: "+wpm+" WPM at "+acc+"% accuracy. "+cl.toFixed(1)+" of 60 seconds ("+Math.round(cl/LEN*100)+"%) went to closing "+served+" pop-ups, and "+eaten+" characters you typed or dictated went nowhere. Weekly limit used: "+usage+"%.";
+  var st=$("stack");st.textContent="";inp.blur();
+  var r=$("result");r.hidden=false;r.appendChild(st);
+  $("rtext").textContent="Final: "+wpm+" WPM at "+acc+"% accuracy. "+cl.toFixed(1)+" of 60 seconds ("+Math.round(cl/LEN*100)+"%) went to closing "+served+" pop-ups, and "+eaten+" characters you typed or dictated went nowhere. Weekly limit used: "+usage+"%.";
+  r.scrollIntoView({block:"center"});
+  nag(["Your results are ready","Close this to see them."]);nag();
 }
 inp.addEventListener("input",function(){
   if(ended){inp.value=typed;return}
@@ -178,13 +188,13 @@ inp.addEventListener("input",function(){
   typed=inp.value.slice(0,TEXT.length);render();stats();
 });
 $("restart").onclick=function(){
-  clearInterval(timer);clearTimeout(nagT);
+  clearInterval(timer);clearTimeout(nagT);$("zone").appendChild($("stack"));
   opened=Date.now();started=0;ended=false;typed="";served=0;blockedAt=0;lost=0;eaten=0;usage=85;
   inp.value="";$("stack").textContent="";$("usage").textContent="85%";
   $("result").hidden=true;$("count").textContent="0 pop-ups served";
   render();stats();inp.focus();nag(usageMsg());scheduleNag();
 };
-setInterval(function(){if(!ended)bumpUsage()},250);
+setInterval(bumpUsage,250);
 render();stats();nag(usageMsg());scheduleNag();
 </script>
 </body>
