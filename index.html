@@ -54,7 +54,7 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 <body>
 <div class="wrap">
   <h1>Anthropic Percentage Pop-up Game</h1>
-  <p class="sub">60 second typing test. Type it or use voice-to-text. A usage banner lands right where you're typing, and anything you type or dictate while it's up goes nowhere. The clock keeps running.</p>
+  <p class="sub">60 second typing test. Type it or use voice-to-text. A usage banner lands right where you're typing, and anything you type or dictate while it's up goes nowhere. They start the second the page opens and never stop. The clock keeps running.</p>
   <div class="stats">
     <div class="stat"><b id="wpm">0</b><span>WPM</span></div>
     <div class="stat"><b id="acc">100%</b><span>Accuracy</span></div>
@@ -77,7 +77,7 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 <script>
 var TEXT="You sat down to do one thing. A banner slid up to tell you a number you did not ask for. You closed it and lost the sentence you were holding. For a neurodivergent brain every pop-up is a small act of violence against focus, and climbing back into the work takes far longer than tapping the X. Ninety percent of a good morning can vanish this way, one percentage at a time. People who would have been perfectly happy end up drained and furious at a screen they pay for. Software should wait to be asked. Put the meter in settings, give people a toggle, and let them work. ";
 TEXT=TEXT+TEXT;
-var LEN=60,started=0,ended=false,typed="",served=0,blockedAt=0,lost=0,eaten=0,timer=null,nagT=null,usage=85,battery=27;
+var opened=Date.now(),LEN=60,started=0,ended=false,typed="",served=0,blockedAt=0,lost=0,eaten=0,timer=null,nagT=null,usage=85,battery=27;
 var $=function(id){return document.getElementById(id)};
 var inp=$("type");
 
@@ -137,12 +137,12 @@ function scheduleNag(){
   clearTimeout(nagT);
   nagT=setTimeout(function(){
     if(ended)return;
-    nag();if(Math.random()<.3)nag();
+    nag();if(Math.random()<.35)nag();
     scheduleNag();
-  },rnd(3000,7000));
+  },rnd(2000,5000));
 }
 function bumpUsage(){
-  var target=Math.min(100,85+Math.floor(typed.length/30)+Math.floor(elapsed()/10));
+  var target=Math.min(100,85+Math.floor(typed.length/30)+Math.floor((Date.now()-opened)/8000));
   if(target>usage){usage=target;$("usage").textContent=usage+"%";nag(usageMsg())}
 }
 function render(){
@@ -162,7 +162,6 @@ function stats(){
   var wpm=t>0?Math.round((right/5)/(t/60)):0;
   var acc=typed.length?Math.round(right/typed.length*100):100;
   $("wpm").textContent=wpm;$("acc").textContent=acc+"%";$("time").textContent=(LEN-t).toFixed(1);
-  if(started&&!ended)bumpUsage();
   if(started&&t>=LEN&&!ended)finish(wpm,acc);
 }
 function finish(wpm,acc){
@@ -175,17 +174,18 @@ function finish(wpm,acc){
 inp.addEventListener("input",function(){
   if(ended){inp.value=typed;return}
   if(blocked()){eaten+=Math.max(0,inp.value.length-typed.length);inp.value=typed;return}
-  if(!started){started=Date.now();timer=setInterval(stats,100);scheduleNag()}
+  if(!started){started=Date.now();timer=setInterval(stats,100)}
   typed=inp.value.slice(0,TEXT.length);render();stats();
 });
 $("restart").onclick=function(){
   clearInterval(timer);clearTimeout(nagT);
-  started=0;ended=false;typed="";served=0;blockedAt=0;lost=0;eaten=0;usage=85;
+  opened=Date.now();started=0;ended=false;typed="";served=0;blockedAt=0;lost=0;eaten=0;usage=85;
   inp.value="";$("stack").textContent="";$("usage").textContent="85%";
   $("result").hidden=true;$("count").textContent="0 pop-ups served";
-  render();stats();inp.focus();
+  render();stats();inp.focus();nag(usageMsg());scheduleNag();
 };
-render();stats();
+setInterval(function(){if(!ended)bumpUsage()},250);
+render();stats();nag(usageMsg());scheduleNag();
 </script>
 </body>
 </html>
